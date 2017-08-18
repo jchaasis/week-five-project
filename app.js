@@ -66,15 +66,20 @@ server.post('/guess', function(req, res){
       }
     }
       //if the letter guessed is apart of the word, push it to the hiddenWord string
+let present = false;
+let letApp = 0;
 
     for (let i=0; i<wordArr.length; i++){
         if (letterGuess.charAt(0) === wordArr[i]){
+
             // present = true;
             //possibly keep track of how many times it shows up
           hiddenWord.push(letterGuess);
+          letApp++;
         }
-        else if (letterGuess.charAt(0) !== wordArr[i]){
-          let present = false;
+
+       if (letterGuess.charAt(0) !== wordArr[i]){
+          //  letApp++;
         }
     }
     //
@@ -82,7 +87,14 @@ server.post('/guess', function(req, res){
     //   hiddenWord.push(letterGuess);
     // }
 
-    if (present = false){
+    if (letApp > 0){
+      present = true;
+    }
+
+    if (letApp === 0){
+      present = false;
+    }
+    if (present === false){
       guessAllowance--;
     }
 //booleans to say if it is true than push the word, if its false, subtract.
@@ -93,6 +105,7 @@ server.post('/guess', function(req, res){
         console.log(letters);
         console.log(wordArr);
         console.log(hiddenWord);
+        console.log(letApp);
 
 
         res.redirect('/');
