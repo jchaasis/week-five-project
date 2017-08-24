@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <title>Mystery Word</title>
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+  <h1>Mystery Word</h1>
+  <section>
+    <h1>{{ word }}</h1>
+    <!-- <h1>hiddenword</h1> -->
+    <h2> {{ blanks }} </h2>
+  </section>
+  <section>
+    <form method="post" action="/guess">
+      <input type='text' name='guess' placeholder="guess a letter">
+      <input type='submit' value='Make a guess'> <p class="invalid"> {{ message }} </p>
+    </form>
+  </section>
+  <section>
+    <p>Incorrect guesses left: {{guessAllowance}}</p>
+    <p>Letters guessed: {{letters}}</p>
+  </section>
+</body>
+
+
+</html>
