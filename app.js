@@ -1,3 +1,8 @@
+
+//TODO: if the add button is clicked with an empty input, it should not register.
+      //clean up the app.js. Add comments where needed, and delete what is not needed.
+
+
 const fs = require('fs');
 const express = require('express');
 const mustache = require('mustache-express');
@@ -6,19 +11,16 @@ const session = require('express-session');
 
 //random word to be generated
 const words = fs.readFileSync("/usr/share/dict/words", "utf-8").toLowerCase().split("\n");
-let word = words[Math.floor(Math.random() * words.length)];
-wordArr = [];
-  for ( let w=0; w<word.length; w++){
-      wordArr.push(word.charAt(w));
-  }
+// let word = words[Math.floor(Math.random() * words.length)];
+let word = undefined;
 
 
-//items that will adjust as guesses are made
-const letters = [];
-let guessAllowance = 8;
-const hiddenWord = [];
+
+
 //initialize the server
 const server= express();
+  //attache public folder
+  server.use(express.static('public'));
 
 //configure the server for:
 
@@ -44,73 +46,151 @@ const server= express();
   //initial get request
     //TODO: create a new session
   server.get('/', function(req, res){
-    res.render("game", {
-                      word: word,
-                      letters: letters,
-                      guessAllowance: guessAllowance,
-                      hiddenWord: hiddenWord,
 
+    // items that will adjust as guesses are made
+    const letters = [];
+    let guessAllowance = 8;
+    const blank = "_";
+    let blanks = [];
+    let inputMessage = '';
+    let gameMessage = '';
+    let wordArr = [];
+    let wordArr2 = [];
+
+
+    //create the new game with a new word
+    if (req.session.word === undefined){
+      console.log(word);
+      word = words[Math.floor(Math.random() * words.length)];
+      let blanks = [];
+      req.session.word = word;
+      req.session.blanks = blanks;
+      req.session.guessAllowance = guessAllowance;
+      req.session.letters = letters;
+      req.session.wordArr = wordArr;
+      req.session.wordArr2 = wordArr2;
+      req.session.inputMessage = inputMessage;
+
+
+      //convert the word into 2 arrays inorder to convert one to blanks and use the other for verification
+        for ( let w = 0; w < word.length; w++){
+            req.session.wordArr.push(req.session.word.charAt(w));
+            req.session.wordArr2.push(req.session.word.charAt(w));
+        }
+
+          //push blanks to the blanks array
+          blanks = wordArr2;
+          for ( let b = 0; b < blanks.length; b++){
+            if (req.session.blanks[b] !== "_") {
+              req.session.blanks[b] = " _ ";
+            }
+          }
+}//end of the if statement to create session
+    res.render("game", {
+                      word: req.session.word,
+                      letters: req.session.letters,
+                      guessAllowance: req.session.guessAllowance,
+                      blanks: req.session.blanks.join(' '),
+                      message: req.session.inputMessage,
     });
     console.log(word);
-  });
 
+  // }//end of the if statement to create session
+});
+    //game-over, play again?
+  server.get('/game-over', function(req, res){
+    res.render('game-over', {
+                      gameMessage: gameMessage,
+                      word: word,
+    });
+  });
 
 //post requests
 server.post('/guess', function(req, res){
+
   //when a letter is guessed, we send it to the guessed array.
-  let letterGuess = req.body.guess;
+  if (req.session.word !== undefined){
+
+  let letterGuess = req.body.guess.toLowerCase();
+
     for (let g=0; g<letterGuess.length; g++){
+
       //if the letter guessed is the right length TODO: make lowercase
-      if (letterGuess.length = 1){
-        letters.push(letterGuess);
+      if (letterGuess.length === 1){
+        req.session.letters.push(letterGuess);
+        req.session.inputMessage = '';
+      }
+      //if the letter guessed is a repeat guess, let the player know and do not deduct from guesses
+      for ( let a = 0; a<req.session.blanks.length; a++){
+        if (letterGuess === req.session.blanks[a]){
+          req.session.inputMessage = "Repeat guess, please guess again";
+          res.redirect('/');
+          return;
+        }
+      //if the letter guessed is an invalid guess, let the player know and do not deduct from guesses
+      }
+      if (letterGuess.length !== 1){
+        req.session.inputMessage = "Invalid input, please guess again";
+        res.redirect('/');
+        return;
       }
     }
-      //if the letter guessed is apart of the word, push it to the hiddenWord string
+      //if the letter guessed is apart of the word, replace the blank with its correct letter
 let present = false;
 let letApp = 0;
 
-    for (let i=0; i<wordArr.length; i++){
-        if (letterGuess.charAt(0) === wordArr[i]){
-
-            // present = true;
-            //possibly keep track of how many times it shows up
-          hiddenWord.push(letterGuess);
+    for (let i=0; i<req.session.wordArr.length; i++){
+        if (letterGuess.charAt(0) === req.session.wordArr[i]){
+              // replace the blank with the appropriate letter
+              req.session.blanks[i] = letterGuess;
+            //increase the letter appearance by one
           letApp++;
         }
 
-       if (letterGuess.charAt(0) !== wordArr[i]){
-          //  letApp++;
-        }
     }
-    //
-    // if (present = true){
-    //   hiddenWord.push(letterGuess);
-    // }
-
+    //if the number of letter appearances in the word is greater than one, then the letter is present and we do not deduct from the guess-allowance.
     if (letApp > 0){
       present = true;
     }
-
+    //if the number of letter appearances in the word is 0, then the letter is not present in the word and we deduct from the guess allowance.
     if (letApp === 0){
       present = false;
     }
     if (present === false){
-      guessAllowance--;
+      req.session.guessAllowance--;
     }
-//booleans to say if it is true than push the word, if its false, subtract.
+    //if the player has used all 8 guesses, show the game over message which includes the word they were trying to guess.
+    if (req.session.guessAllowance === 0){
+      gameMessage = `Out of guesses. The mystery word was "${word}", would you like to try again?`;
 
-        // if (letterGuess.charAt(0) !== wordArr[i]){
-        //   guessAllowance--;//this is currently subtracting 1 for each letter of the wordArr that doesn't match. Needs to be moved.
-        // };
-        console.log(letters);
-        console.log(wordArr);
-        console.log(hiddenWord);
-        console.log(letApp);
+      res.redirect('/game-over');
+    }
+
+    //if the player has guessed all the letters, congratulate them
+    if (req.session.blanks.join('') === word) {
+
+        gameMessage = 'Congratulations!! You guessed the Mystery Word!';
+         res.redirect('/game-over');
+    }
+
+      //print items to the console for testing
+        console.log(req.session.letters);
+        console.log(req.session.wordArr);
+        // console.log(letApp);
+        console.log(req.session.blanks);
+        console.log(req.session.guessAllowance);
 
 
+      }
         res.redirect('/');
 });
 
+  //new game
+server.post('/new', function(req, res){
+  let word = undefined;
+  req.session.destroy();
+  res.redirect('/');
+})
 
 //wait and listen for someone to access the port
 server.listen(4000, function(){
